@@ -11,7 +11,17 @@ const taskRoutes = require('./routes/tasks');
 
 const app = express();
 
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+const FRONTEND_ORIGINS = process.env.FRONTEND_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173';
+const allowedOrigins = FRONTEND_ORIGINS.split(',').map(s => s.trim());
+app.use(cors({
+  origin: function(origin, callback) {
+    // allow requests with no origin (like mobile apps, curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('CORS policy: Origin not allowed'), false);
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 // Routes
