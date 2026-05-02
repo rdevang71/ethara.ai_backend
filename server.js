@@ -11,17 +11,37 @@ const taskRoutes = require('./routes/tasks');
 
 const app = express();
 
-const FRONTEND_ORIGINS = process.env.FRONTEND_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173';
-const allowedOrigins = FRONTEND_ORIGINS.split(',').map(s => s.trim());
+const FRONTEND_ORIGINS = process.env.FRONTEND_ORIGINS || process.env.FRONTEND_URL || '';
+const allowedOrigins = FRONTEND_ORIGINS ? FRONTEND_ORIGINS.split(',').map(s => s.trim()).filter(Boolean) : [];
+const allowAll = allowedOrigins.length === 0;
+console.log('Configured CORS allowed origins:', allowAll ? '[ALL]' : allowedOrigins);
+
 app.use(cors({
   origin: function(origin, callback) {
     // allow requests with no origin (like mobile apps, curl)
     if (!origin) return callback(null, true);
+    if (allowAll) return callback(null, true);
     if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error('CORS policy: Origin not allowed'), false);
+    // explicitly deny
+    return callback(null, false);
   },
-  credentials: true
+  credentials: true,
+  optionsSuccessStatus: 204
 }));
+
+// For browsers: respond to preflight requests with appropriate headers when origin is allowed
+app.options('*', (req, res) => {
+  const origin = req.get('Origin');
+  if (!origin) return res.sendStatus(204);
+  if (allowAll || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', allowAll ? '*' : origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    return res.sendStatus(204);
+  }
+  return res.sendStatus(403);
+});
 app.use(express.json());
 
 // Routes
