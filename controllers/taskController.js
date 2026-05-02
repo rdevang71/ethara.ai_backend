@@ -13,6 +13,19 @@ exports.getTasksByProject = async (req, res) => {
   }
 };
 
+exports.getAllTasks = async (req, res) => {
+  try {
+    const tasks = await Task.find()
+      .populate('project', 'name status priority')
+      .populate('assignedTo', 'name avatar email')
+      .populate('createdBy', 'name')
+      .sort('-createdAt');
+    res.json(tasks);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getMyTasks = async (req, res) => {
   try {
     const tasks = await Task.find({ assignedTo: req.user._id })
